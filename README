@@ -1,3 +1,5 @@
 META V1.3 (C) 2009-2011
 
-Used for meta analysis on genetics data.
+META is a program for the meta analysis of genome-wide association studies. The program is designed to synthesizing the evidence from different association studies. Particularly, the program is able to work seamlessly with the output of SNPTEST. This program was used in the meta analysis of the genome-wide association studies of smoking [1].
+
+[1] J. Z. Liu, et al (2010) Meta-analysis and imputation refines the association of 15q25 with smoling quantity. Nature Genetics, 42, 436-440
