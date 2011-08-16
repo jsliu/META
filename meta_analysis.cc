@@ -269,27 +269,17 @@ int META::read_snptest_output(Cohort& single_cohort, const gzFile in)
 		for(int i = 0; i < body_column; i++)
 		{
 			if(header[i] == "rsid") cohort_snp.rsid = line[i];
-			else if(header[i] == "pos") cohort_snp.pos = string2long(line[i]);
-			else if(header[i] == "allele_A") cohort_snp.allele_A = string2char(line[i]);
-			else if(header[i] == "allele_B") cohort_snp.allele_B = string2char(line[i]);
-			else if(header[i] == "all_AA") cohort_snp.genotype_aa = string2double(line[i]);
-			else if(header[i] == "all_AB") cohort_snp.genotype_ab = string2double(line[i]);
-			else if(header[i] == "all_BB") cohort_snp.genotype_bb = string2double(line[i]);
-			else {
-
-				string::size_type index1, index2, index3, index4;
-
-				index1 = header[i].find("_pvalue");
-				index2 = header[i].find("_info");
-				index3 = header[i].find("_beta_1");
-				index4 = header[i].find("_se_1");
-
-				if(index2 != string::npos) cohort_snp.measure_info = string2double(header[index2]);
-				if(index3 != string::npos) cohort_snp.beta = string2double(header[index3]);
-				if(index4 != string::npos) cohort_snp.se = string2double(header[index4]);
-				if(index1 != string::npos) cohort_snp.pvalue = string2double(header[index1]);
-			}
-
+			if(header[i] == "pos") cohort_snp.pos = string2long(line[i]);
+			if(header[i] == "allele_A") cohort_snp.allele_A = string2char(line[i]);
+			if(header[i] == "allele_B") cohort_snp.allele_B = string2char(line[i]);
+			if(header[i] == "all_AA") cohort_snp.genotype_aa = string2double(line[i]);
+			if(header[i] == "all_AB") cohort_snp.genotype_ab = string2double(line[i]);
+			if(header[i] == "all_BB") cohort_snp.genotype_bb = string2double(line[i]);
+			
+			if(header[i].find("_pvalue") != string::npos) cohort_snp.pvalue = string2double(line[i]);
+			if(header[i].find("_info") != string::npos) cohort_snp.measure_info = string2double(line[i]);
+			if(header[i].find("_beta_1") != string::npos) cohort_snp.beta = string2double(line[i]);
+			if(header[i].find("_se_1") != string::npos) cohort_snp.se = string2double(line[i]);
 		}
 		//TODO: have to deal with the case when these values are not read
 		filter_data(single_cohort, cohort_snp);

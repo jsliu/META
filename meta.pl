@@ -93,7 +93,7 @@ sub main
 		$com .= " --size @sizes" if($opts{size});
 	}
 	
-	$com = "./meta-1.3 $com --output $opts{output}";
+	$com = "./meta-stat-1.3 $com --output $opts{output}";
 	print "$com\n";
 	system($com);
 
