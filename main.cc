@@ -7,7 +7,7 @@ int main(int argc, char* argv[])
 
   if(parameter_number == 1) {
 
-      cout << "META v1.3 - Meta Analysis\n";
+      cout << "META v1.3.1 - Meta Analysis\n";
       cout <<  "(c) 2009-2011 Jason Liu, University of Oxford\n\n";
     
       cout << "Options:\n";
