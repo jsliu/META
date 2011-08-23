@@ -31,16 +31,17 @@ extern "C" {
 
 }
 
-typedef long long int Positive;
+typedef unsigned long int Positive;
 
 class SNP
 {
 
 public:
-  SNP();
-  ~SNP();
+  SNP() : chr(0), sample_size(0.), coded_af(0.) {};
+  ~SNP() {};
   string rsid;
   char allele_A, allele_B;
+  unsigned int chr;
   Positive pos;
   int imputed;
   long sample_size;
@@ -55,8 +56,8 @@ class CohortSNP : public SNP
 {
 
 public:
-  CohortSNP();
-  ~CohortSNP();
+  CohortSNP() : genotype_aa(0.0), genotype_ab(0.0), genotype_bb(0.0) {};
+  ~CohortSNP() {};
   double measure_info;
   double genotype_aa, genotype_ab, genotype_bb;
   bool snp_flipped;
@@ -69,8 +70,8 @@ class MetaSNP : public SNP
 {
 
 public:
-  MetaSNP();
-  ~MetaSNP();
+  MetaSNP() {};
+  ~MetaSNP() {};
   double nu; // between study variance
   double Q;
   double p_het;
@@ -89,7 +90,7 @@ class Parameter
 {
 public:
   Parameter(int, vector<string> &);
-  ~Parameter();
+  ~Parameter() {};
   void print();
 
   string output;
@@ -103,14 +104,12 @@ public:
   vector<double> genomic_controls;
 
   bool snptest;
+  bool chr_included;
   bool sample_size;
   bool rsid;
   bool interval;
   bool top;
   bool gc;
-  bool debug;
-  bool zflag;
-
 };
 
 class META : public Parameter
@@ -118,7 +117,7 @@ class META : public Parameter
 
 public:
   META(int, vector<string> &);
-  ~META();
+  ~META() {};
 
   void read_data();
   gzFile read_cohort(string, bool quiet = true);
@@ -165,8 +164,6 @@ private:
   vector<int> included; // to judge if the SNP of cohort is included at the position
 
   int number_cohort;
-
-
 };
 
 

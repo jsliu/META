@@ -1,24 +1,7 @@
 #include "meta_analysis.h"
 
-SNP::SNP()
-  :sample_size(0.0), coded_af(0.0)
-{
-}
-
-SNP::~SNP() {}
-
-CohortSNP::CohortSNP()
-  :genotype_aa(0.0), genotype_ab(0.0), genotype_bb(0.0)
-{
-}
-
-CohortSNP::~CohortSNP() {}
-
-MetaSNP::MetaSNP() {}
-MetaSNP::~MetaSNP() {}
-
 Parameter::Parameter(int num_para, vector<string>& para)
-  :snptest(false), sample_size(false), rsid(false), interval(false), top(false), gc(false), debug(false), zflag(false)
+  :snptest(false), chr_included(false), sample_size(false), rsid(false), interval(false), top(false), gc(false)
 {
 
     /* read the command line values */
@@ -100,7 +83,6 @@ Parameter::Parameter(int num_para, vector<string>& para)
     		}
     		gc = true;
     	}
-    	if(para[i].find("--debug") != string::npos) debug = true;
     }
 
     for(map<string, int>::iterator it_para = para_exist.begin(); it_para != para_exist.end(); it_para++) {
@@ -118,13 +100,11 @@ Parameter::Parameter(int num_para, vector<string>& para)
 
 }
 
-Parameter::~Parameter() {}
-
 void Parameter::print()
 {
 
   cout << endl;
-  cout << "         META v1.3 (beta)" << endl;
+  cout << "         META v1.3.2 (beta)" << endl;
   cout << "===================================" << endl << endl;
 
   if (snptest) {
@@ -166,13 +146,11 @@ META::META(int np, vector<string>& p)
 {
 
   number_cohort = cohorts.size();
-  if (debug) cout << "number_cohort = " << number_cohort << endl;
+  #ifdef DEBUG 
+	cout << "number_cohort = " << number_cohort << endl;
+  #endif
 
 }
-
-
-META::~META() {};
-
 
 /*******************************************************
  *  Open the output of SNPTEST and read it line by line
@@ -311,15 +289,15 @@ int META::read_standard_output(Cohort& single_cohort, const gzFile in)
 
     	for(int i = 0; i < body_column; i++)
     	{
-    		//if(col_names[i] == "imputed") in >> cohort_snp.imputed;
+    		if(header[i] == "chr") { cohort_snp.chr = string2int(line[i]); chr_included = true; }
     		if(header[i] == "rsid") cohort_snp.rsid = line[i];
-    		else if(header[i] == "pos") cohort_snp.pos = string2long(line[i]);
-    		else if(header[i] == "allele_A") cohort_snp.allele_A = string2char(line[i]);
-    		else if(header[i] == "allele_B") cohort_snp.allele_B = string2char(line[i]);
-    		else if(header[i] == "info") cohort_snp.measure_info = string2double(line[i]);
-    		else if(header[i] == "P_value") cohort_snp.pvalue = string2double(line[i]);
-    		else if(header[i] == "beta") cohort_snp.beta = string2double(line[i]);
-    		else if(header[i] == "se") cohort_snp.se = string2double(line[i]);
+    		if(header[i] == "pos") cohort_snp.pos = string2long(line[i]) + cohort_snp.chr * 1e9;
+    		if(header[i] == "allele_A") cohort_snp.allele_A = string2char(line[i]);
+    		if(header[i] == "allele_B") cohort_snp.allele_B = string2char(line[i]);
+    		if(header[i] == "info") cohort_snp.measure_info = string2double(line[i]);
+    		if(header[i] == "P_value") cohort_snp.pvalue = string2double(line[i]);
+    		if(header[i] == "beta") cohort_snp.beta = string2double(line[i]);
+    		if(header[i] == "se") cohort_snp.se = string2double(line[i]);
     	}
     	filter_data(single_cohort, cohort_snp);
     	body_column = read_line(line, in);
@@ -437,7 +415,7 @@ void META::write_data()
 	ofstream out;
 	write_cohort(out);
 
-	//if(snptest) out << "imputed" << " ";
+	if(chr_included) out << "chr" << " ";
 	out << "rsid" << " ";
 	out << "pos" << " ";
 	out << "allele_A" << " ";
@@ -461,7 +439,9 @@ void META::write_data()
 	out << endl;
 
 	/* write the output */
-	if(debug) cout << "meta size = " << meta.size() << endl;
+	#ifdef DEBUG
+		cout << "meta size = " << meta.size() << endl;
+	#endif
 
 	if(top) {
 
@@ -494,8 +474,7 @@ void META::write_SNP(ofstream& out)
 
 	for(it_meta = meta.begin(); it_meta != meta.end(); it_meta++) {
 
-		//if(snptest) out << (*it_meta).second.imputed << " ";
-
+		if(chr_included) out << (*it_meta).second.chr << " ";
 		out << (*it_meta).second.rsid << " ";
 		out << (*it_meta).first << " ";
 		out << (*it_meta).second.allele_A << " ";
@@ -537,7 +516,7 @@ void META::write_top_SNP(ofstream& out)
 
 		if(k < top) {
 
-			//if(snptest) out << (*it_sorted).second.imputed << " ";
+			if(chr_included) out << (*it_sorted).second.chr << " ";
 
 			out << (*it_sorted).second.rsid << " ";
 			out << (*it_sorted).second.pos << " ";
@@ -610,14 +589,11 @@ void META::create_union_list()
 	for(it_cohort = cohort_list[0].begin(); it_cohort != cohort_list[0].end(); it_cohort++)
 	{
 
-		if(debug)
-		{
-
+		#ifdef DEBUG
 			cout << "cohort 1" << " ";
 			cout << "rsid =  " << (*it_cohort).second.rsid << " ";
 			cout << "pos = " << (*it_cohort).first << endl;
-
-		}
+		#endif
 
 		union_pos.push_back((*it_cohort).first);
 
@@ -635,13 +611,11 @@ void META::create_union_list()
 			second_pos.reserve(cohort_list[i].size());
 			for(it_cohort = cohort_list[i].begin(); it_cohort != cohort_list[i].end(); it_cohort++) {
 
-				if(debug) {
-
+				#ifdef DEBUG
 					cout << "cohort " << i + 1 << " ";
 					cout << "rsid =  " << (*it_cohort).second.rsid << " ";
 					cout << "pos = " << (*it_cohort).first << endl;
-
-				}
+				#endif
 
 				second_pos.push_back((*it_cohort).first);
 
@@ -713,29 +687,25 @@ void META::check_alleles_across_cohorts(int& snp_flipped, int& snp_reversed, int
 
 				if(curr_allele_A != first_allele_A || curr_allele_B != first_allele_B) {
 
-					if(debug) {
-
+					#ifdef DEBUG
 						cout << (*it_location).second.rsid << ": alleles "
 								<< curr_allele_A << "/" << curr_allele_B << " (Cohort " << i+1 << ")" << " != "
 								<< first_allele_A << "/" << first_allele_B << " (Cohort 1)";
+					#endif
 
-					}
 
 					if(check_alleles_flipped(first_allele_A, first_allele_B, curr_allele_A, curr_allele_B)) {
 
-						if(debug) { cout << ": alleles flipped." << endl; }
 						(*it_location).second.snp_flipped = true;
 						snp_flipped++;
 
 					}else if(check_alleles_reversed(first_allele_A, first_allele_B, curr_allele_A, curr_allele_B)) {
 
-						if(debug) { cout << ": alleles reversed." << endl; }
 						(*it_location).second.snp_reversed = true;
 						snp_reversed++;
 
 					}else{
 
-						if(debug) { cout << ": SNP removed." << endl; }
 						union_pos.erase(it_union);
 						snp_removed++;
 						break;
@@ -773,7 +743,9 @@ void META::inverse_variance_method()
 		meta_snp.beta = beta_hat;
 		meta_snp.se = se_hat;
 
-		if(debug) cout << "combined beta = " << meta_snp.beta << " combined se = " << meta_snp.se << endl;
+		#ifdef DEBUG
+			cout << "combined beta = " << meta_snp.beta << " combined se = " << meta_snp.se << endl;
+		#endif
 
 		/* proper test statistics and p-value */
 		double stats =  (beta_hat / se_hat) * (beta_hat / se_hat);
@@ -782,8 +754,8 @@ void META::inverse_variance_method()
 
 		meta.insert(pair<Positive, MetaSNP>(meta_snp.pos, meta_snp));
 
-		if(debug) {
-
+		#ifdef DEBUG
+			cout << meta_snp.chr << " ";
 			cout << meta_snp.rsid << " ";
 			cout << meta_snp.pos << " ";
 			cout << meta_snp.allele_A << " ";
@@ -795,9 +767,7 @@ void META::inverse_variance_method()
 			cout << meta_snp.Q << " ";
 			cout << meta_snp.p_het << " ";
 			cout << meta_snp.I2 << endl;
-
-		}
-
+		#endif
 	}
 
 }
@@ -831,7 +801,7 @@ void META::combine_beta_se(const Positive pos, double& beta_hat, double& se_hat)
 			if(first == 0) {
 
 				/* rsid, alleles and allele frequenecies */
-				//meta_snp.imputed = (*it_location).second.imputed;
+				if(chr_included) meta_snp.chr = (*it_location).second.chr;
 				meta_snp.rsid = (*it_location).second.rsid;
 				meta_snp.allele_A = (*it_location).second.allele_A;
 				meta_snp.allele_B = (*it_location).second.allele_B;
@@ -875,7 +845,9 @@ void META::combine_beta_se(const Positive pos, double& beta_hat, double& se_hat)
 
 			first++;
 
-			if(debug) cout << "cohort " << i + 1 << ": beta = " << beta_i[i] << " se = " << (*it_location).second.se << endl;
+			#ifdef DEBUG
+				cout << "cohort " << i + 1 << ": beta = " << beta_i[i] << " se = " << (*it_location).second.se << endl;
+			#endif
 
 		}
 
@@ -892,7 +864,9 @@ void META::combine_beta_se(const Positive pos, double& beta_hat, double& se_hat)
 void META::combine_beta_se_with_nu(const Positive pos, double& beta_hat, double& se_hat)
 {
 
-	if(debug) cout << "Q = " << meta_snp.Q << " nu = " << meta_snp.nu << endl;
+	#ifdef DEBUG
+		cout << "Q = " << meta_snp.Q << " nu = " << meta_snp.nu << endl;
+	#endif
 
 	Cohort::iterator it_location;
 
@@ -975,7 +949,9 @@ void META::combine_z_score()
     		wei_i[i] = sample_sizes[i];
     		wei_sum += wei_i[i];
 
-    		if(debug) cout << "Cohort " << i + 1 << ": beta = " << beta_i[i] << " se = " << se_i[i] << " wei = " << wei_i[i] << endl;
+    		#ifdef DEBUG
+			cout << "Cohort " << i + 1 << ": beta = " << beta_i[i] << " se = " << se_i[i] << " wei = " << wei_i[i] << endl;
+		#endif
 
     		pvalue_i[i] = (*it_location).second.pvalue;
 
@@ -989,7 +965,9 @@ void META::combine_z_score()
     pvalue_list.push_back(pvalue_i);
     meta_snp.pvalue = 2.0 * ndtr(-abs(stats_meta));
 
-    if(debug) cout << "Statistics = " << stats_meta << " P-value = " << meta_snp.pvalue << endl;
+    #ifdef DEBUG
+	cout << "Statistics = " << stats_meta << " P-value = " << meta_snp.pvalue << endl;
+    #endif
 
     meta.insert(pair<Positive, MetaSNP>(meta_snp.pos, meta_snp));
 
