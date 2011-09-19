@@ -6,36 +6,28 @@
 
 #include <iostream>
 #include <fstream>
-#include <sstream>
-#include <string>
-#include <cassert>
 #include <cmath>
 #include <cstdlib>
 #include <exception>
-#include <map>
-#include <vector>
 #include <algorithm>
 #include <zlib.h>
 
 #include "tools/cprob/cprob.h"
-#include "tools/utility.h"
 #include "error.h"
+#include "parameter.h"
 
 using namespace std;
 
 extern "C" {
-
   double chdtrc(double v, double x);
   double ndtr(double x);
   double ndtri(double x);
-
 }
 
-typedef unsigned long int Positive;
+typedef unsigned long Positive;
 
 class SNP
 {
-
 public:
   SNP() : chr(0), sample_size(0.), coded_af(0.) {};
   ~SNP() {};
@@ -54,7 +46,6 @@ public:
 
 class CohortSNP : public SNP
 {
-
 public:
   CohortSNP() : genotype_aa(0.0), genotype_ab(0.0), genotype_bb(0.0) {};
   ~CohortSNP() {};
@@ -68,7 +59,6 @@ public:
 
 class MetaSNP : public SNP
 {
-
 public:
   MetaSNP() {};
   ~MetaSNP() {};
@@ -85,38 +75,10 @@ typedef map<Positive, CohortSNP> Cohort;
 typedef map<Positive, MetaSNP> Meta;
 typedef vector<Positive> Union;
 
-
-class Parameter
+class META
 {
 public:
-  Parameter(int, vector<string> &);
-  ~Parameter() {};
-  void print();
-
-  string output;
-  int methods;
-  double threshold;
-  vector<string> cohorts;
-  vector<long> sample_sizes;
-  vector<string> rsids;
-  vector<Positive> region;
-  long top_snp;
-  vector<double> genomic_controls;
-
-  bool snptest;
-  bool chr_included;
-  bool sample_size;
-  bool rsid;
-  bool interval;
-  bool top;
-  bool gc;
-};
-
-class META : public Parameter
-{
-
-public:
-  META(int, vector<string> &);
+  META(const Parameter&);
   ~META() {};
 
   void read_data();
@@ -149,6 +111,7 @@ public:
   void heterogeneity(MetaSNP&, const double);
 
 private:
+  Parameter pa;
   Meta meta;
   Meta::iterator it_meta;
   Union union_pos;

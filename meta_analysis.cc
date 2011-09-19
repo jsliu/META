@@ -1,155 +1,12 @@
 #include "meta_analysis.h"
 
-Parameter::Parameter(int num_para, vector<string>& para)
-  :snptest(false), chr_included(false), sample_size(false), rsid(false), interval(false), top(false), gc(false)
+META::META(const Parameter& p)
+:pa(p)
 {
-
-    /* read the command line values */
-    map<string, int> para_exist;
-    para_exist["--output"] = 0;
-    para_exist["--cohort"] = 0;
-    //para_exist["--sample-size"] = 0;
-    para_exist["--method"] = 0;
-
-    threshold = 0.5;    // default value
-
-    for(int i = 1; i < num_para; i++) {
-    	if (para[i].find("--output") != string::npos) {
-    		output = para[i + 1];
-    		para_exist[para[i]] = 1;
-    	}
-    	if (para[i].find("--snptest") != string::npos) snptest = true;
-    	if (para[i].find("--threshold") != string::npos) threshold = string2double(para[i+1]);
-    	if (para[i].find("--method") != string::npos) {
-    		methods = string2int(para[i + 1]);
-    		if (methods == 3) {
-    			for (int j = 1; j < num_para; j++) {
-    				if (para[j].find("--sample-size") != string::npos) {
-    					int k = 1;
-    					while ((j + k) < num_para && para[j + k].find_first_of("-") == string::npos) {
-    						sample_sizes.push_back(string2long(para[j + k]));
-    						k++;
-    					}
-    					sample_size = true;
-    				}
-    			}
-    		}
-
-    		if (methods > 3) {
-    			string error = "The value of method must be in between 1 and 3.\n";
-    			throw(BadFile(error));
-    		}
-    		para_exist[para[i]]= 1;
-    	}
-    	if (para[i].find("--cohort") != string::npos) {
-    		int j = 1;
-    		while((i + j) < num_para && para[i + j].find_first_of("-") == string::npos) {
-    			cohorts.push_back(para[i + j]);
-    			j++;
-    		}
-    		para_exist[para[i]] = 1;
-    	}
-    	if (para[i].find("--rsid") != string::npos) {
-    		int j = 1;
-    		while((i + j) < num_para && para[i + j].find_first_of("-") == string::npos) {
-    			rsids.push_back(para[i + j]);
-    			j++;
-    		}
-    		rsid = true;
-    	}
-    	if (para[i].find("--interval") != string::npos) {
-    		int j = 1;
-    		while((i + j) < num_para && para[i + j].find_first_of("-") == string::npos) {
-    			region.push_back(string2long(para[i + j]));
-    			j++;
-    		}
-    		assert(region[0] <= region[1]);
-    		if (region.size() != 2) {
-    			string error = "Only two bouds are in need\n";
-    			throw(BadFile(error));
-
-    		}
-    		interval = true;
-    	}
-    	if (para[i].find("--top-snp") != string::npos) {
-    		top_snp = string2long(para[i + 1]);
-    		top = true;
-    	}
-    	if (para[i].find("--lambda") != string::npos) {
-    		int j = 1;
-    		while ((i + j) < num_para && para[i + j].find_first_of("-") == string::npos) {
-    			genomic_controls.push_back(string2double(para[i + j]));
-    			j++;
-    		}
-    		gc = true;
-    	}
-    }
-
-    for(map<string, int>::iterator it_para = para_exist.begin(); it_para != para_exist.end(); it_para++) {
-
-      if (!(it_para -> second)) {
-
-        string error = "ERROR! Parameter [ " + it_para->first + " ] is in need.";
-        throw BadFile(error);
-
-      }
-
-    }
-
-    print();
-
-}
-
-void Parameter::print()
-{
-
-  cout << endl;
-  cout << "         META v1.3.2 (beta)" << endl;
-  cout << "===================================" << endl << endl;
-
-  if (snptest) {
-    cout << "==> SNPTEST output used" << endl;
-  } else {
-    cout << "==> Standard output used" << endl;
-  }
-
-  cout << "==> Method being used: " ;
-  switch(methods) {
-      case 1:
-          cout << "inverse-variance method (fixed effects model)" << endl;
-          break;
-      case 2:
-          cout << "inverse-variance method (random effects model)" << endl;
-          break;
-      case 3:
-          cout << "combining z-statistics method" << endl;
-          break;
-  }
-
-  if (rsid) {
-    cout << "==> Selected SNPs: ";
-    for(int i = 0; i < rsids.size(); i++)
-      cout << "        " << rsids[i] << endl;
-    cout << endl;
-  }
-
-  if (interval) {
-    cout << "==> Selected Region: ";
-    cout << " [ " << region[0] << " , " << region[1] << " ]  " << endl << endl;
-  }
-  cout << "==> OUTPUT: " << output << endl << endl;
-}
-
-
-META::META(int np, vector<string>& p)
-  :Parameter(np, p)
-{
-
-  number_cohort = cohorts.size();
+  number_cohort = pa.cohorts.size();
   #ifdef DEBUG 
 	cout << "number_cohort = " << number_cohort << endl;
   #endif
-
 }
 
 /*******************************************************
@@ -161,24 +18,24 @@ void META::read_data()
 	cout << "==> " << number_cohort << " cohorts being used: " << endl << flush;
 
 	/* to judge if the selected SNPs are in the data */
-	if(rsid) select_SNP();
+	if(pa.rsid) select_SNP();
 
 	/* read the data from all cohorts */
 	cohort_list.reserve(number_cohort);
-	for(vector<string>::iterator  it = cohorts.begin(); it != cohorts.end(); it++)
+	for(vector<string>::iterator  it = pa.cohorts.begin(); it != pa.cohorts.end(); it++)
 	{
 		Cohort single_cohort;
 		gzFile in = read_cohort(*it);
 
 		/* read content */
 		int num_row;
-		if (snptest) {
+		if (pa.snptest) {
 			num_row = read_snptest_output(single_cohort, in);
 		} else {
 			num_row = read_standard_output(single_cohort, in);
 		}
 
-		int indx = static_cast<int> (it - cohorts.begin() + 1);
+		int indx = static_cast<int> (it - pa.cohorts.begin() + 1);
 		int cohort_size = single_cohort.size();
 		string cohort_name = *it;
 		printINFO(num_row, indx, cohort_size, cohort_name);
@@ -186,7 +43,7 @@ void META::read_data()
 		cohort_list.push_back(single_cohort);
 	}
 
-	if(rsid) print_missing_SNP();
+	if(pa.rsid) print_missing_SNP();
 
 }
 
@@ -289,7 +146,7 @@ int META::read_standard_output(Cohort& single_cohort, const gzFile in)
 
     	for(int i = 0; i < body_column; i++)
     	{
-    		if(header[i] == "chr") { cohort_snp.chr = string2int(line[i]); chr_included = true; }
+    		if(header[i] == "chr") { cohort_snp.chr = string2int(line[i]); pa.chr_included = true; }
     		if(header[i] == "rsid") cohort_snp.rsid = line[i];
     		if(header[i] == "pos") cohort_snp.pos = string2long(line[i]) + cohort_snp.chr * 1e9;
     		if(header[i] == "allele_A") cohort_snp.allele_A = string2char(line[i]);
@@ -303,14 +160,14 @@ int META::read_standard_output(Cohort& single_cohort, const gzFile in)
     	body_column = read_line(line, in);
     } // while
 
-	return num_row;
+    return num_row;
 }
 
 
 void META::select_SNP()
 {
-	    included.reserve(rsids.size());
-	    for(int i = 0; i < rsids.size(); i++) included.push_back(1);
+	    included.reserve(pa.rsids.size());
+	    for(int i = 0; i < pa.rsids.size(); i++) included.push_back(1);
 
 }
 
@@ -318,18 +175,18 @@ void META::select_SNP()
 void META::filter_data(Cohort& single_cohort, const CohortSNP& cohort_snp)
 {
 
-	if(cohort_snp.measure_info >= threshold || cohort_snp.measure_info == -1)
+	if(cohort_snp.measure_info >= pa.threshold || cohort_snp.measure_info == -1)
 	{
 
 		if(cohort_snp.se > 0)
 		{
 			/* data for selected SNPs */
-			if(rsid)
+			if(pa.rsid)
 			{
 
 				read_specific_snp(single_cohort, cohort_snp);
 
-			}else if(interval) {
+			}else if(pa.interval) {
 
 				read_SNP_in_region(single_cohort, cohort_snp);
 
@@ -348,9 +205,9 @@ void META::filter_data(Cohort& single_cohort, const CohortSNP& cohort_snp)
 void META::read_specific_snp(Cohort& single_cohort, const CohortSNP& cohort_snp)
 {
 
-	for(int i = 0; i < rsids.size(); i++)
+	for(int i = 0; i < pa.rsids.size(); i++)
 	{
-		if(rsids[i].compare(cohort_snp.rsid) == 0)
+		if(pa.rsids[i].compare(cohort_snp.rsid) == 0)
 		{
 			single_cohort.insert(pair<Positive, CohortSNP>(cohort_snp.pos, cohort_snp));
 			included[i]++;
@@ -362,7 +219,7 @@ void META::read_specific_snp(Cohort& single_cohort, const CohortSNP& cohort_snp)
 void META::read_SNP_in_region(Cohort& single_cohort, const CohortSNP& cohort_snp)
 {
 
-	if(cohort_snp.pos >= region[0] && cohort_snp.pos <= region[1])
+	if(cohort_snp.pos >= pa.region[0] && cohort_snp.pos <= pa.region[1])
 		single_cohort.insert(pair<Positive, CohortSNP>(cohort_snp.pos, cohort_snp));
 
 }
@@ -380,7 +237,7 @@ void META::printINFO(const int num_row, const int indx, const int cohort_size, c
 	cout.precision(4);
 	cout << percent;
 
-	cout << "%) " << "SNPs are used (threshold >= " << threshold << ")" << endl;
+	cout << "%) " << "SNPs are used (threshold >= " << pa.threshold << ")" << endl;
 
 }
 
@@ -388,16 +245,13 @@ void META::printINFO(const int num_row, const int indx, const int cohort_size, c
 void META::print_missing_SNP()
 {
 
-	for(int i = 0; i < rsids.size(); i++)
+	for(int i = 0; i < pa.rsids.size(); i++)
 	{
 		if(included[i] == 0)
 		{
-
-			string error = "OOPS! " + rsids[i] + " is not contained in all cohorts.";
-	    	throw BadFile(error);
-
+			string error = "OOPS! " + pa.rsids[i] + " is not contained in all cohorts.";
+	    		throw BadFile(error);
 		}
-
 	}
 
 }
@@ -415,16 +269,16 @@ void META::write_data()
 	ofstream out;
 	write_cohort(out);
 
-	if(chr_included) out << "chr" << " ";
+	if(pa.chr_included) out << "chr" << " ";
 	out << "rsid" << " ";
 	out << "pos" << " ";
 	out << "allele_A" << " ";
 	out << "allele_B" << " ";
 	out << "P_value" << " ";
 
-	if(methods == 1 || methods == 2) {
+	if(pa.methods == 1 || pa.methods == 2) {
 
-		if(snptest) out << "coded_af" << " ";
+		if(pa.snptest) out << "coded_af" << " ";
 		out << "beta" << " ";
 		out << "se" << " ";
 		out << "Q" << " ";
@@ -443,7 +297,7 @@ void META::write_data()
 		cout << "meta size = " << meta.size() << endl;
 	#endif
 
-	if(top) {
+	if(pa.top) {
 
 		write_top_SNP(out);
 
@@ -459,10 +313,10 @@ void META::write_data()
 
 void META::write_cohort(ofstream& out)
 {
-	out.open(output.c_str());
+	out.open(pa.output.c_str());
 
 	if (out.fail()) {
-	    string err = "ERROR! Fail to open file: " + output;
+	    string err = "ERROR! Fail to open file: " + pa.output;
 	    throw BadFile(err);
 	}
 }
@@ -474,16 +328,16 @@ void META::write_SNP(ofstream& out)
 
 	for(it_meta = meta.begin(); it_meta != meta.end(); it_meta++) {
 
-		if(chr_included) out << (*it_meta).second.chr << " ";
+		if(pa.chr_included) out << (*it_meta).second.chr << " ";
 		out << (*it_meta).second.rsid << " ";
 		out << (*it_meta).first << " ";
 		out << (*it_meta).second.allele_A << " ";
 		out << (*it_meta).second.allele_B << " ";
 		out << (*it_meta).second.pvalue << " ";
 
-		if(methods == 1 || methods == 2) {
+		if(pa.methods == 1 || pa.methods == 2) {
 
-			if(snptest) out << (*it_meta).second.coded_af << " ";
+			if(pa.snptest) out << (*it_meta).second.coded_af << " ";
 			out << (*it_meta).second.beta << " ";
 			out << (*it_meta).second.se << " ";
 			out << (*it_meta).second.Q << " ";
@@ -514,9 +368,9 @@ void META::write_top_SNP(ofstream& out)
 
 	for(it_sorted = sorted_snp.begin(); it_sorted != sorted_snp.end(); it_sorted++) {
 
-		if(k < top) {
+		if(k < pa.top) {
 
-			if(chr_included) out << (*it_sorted).second.chr << " ";
+			if(pa.chr_included) out << (*it_sorted).second.chr << " ";
 
 			out << (*it_sorted).second.rsid << " ";
 			out << (*it_sorted).second.pos << " ";
@@ -524,10 +378,9 @@ void META::write_top_SNP(ofstream& out)
 			out << (*it_sorted).second.allele_B << " ";
 			out << (*it_sorted).second.pvalue << " ";
 
+			if(pa.methods == 1 || pa.methods == 2) {
 
-			if(methods == 1 || methods == 2) {
-
-				if(snptest) out << (*it_sorted).second.coded_af << " ";
+				if(pa.snptest) out << (*it_sorted).second.coded_af << " ";
 				out << (*it_sorted).second.beta << " ";
 				out << (*it_sorted).second.se << " ";
 				out << (*it_sorted).second.Q << " ";
@@ -561,8 +414,8 @@ void META::meta_analysis()
 
   create_union_list();
 
-  if(methods == 1 | methods == 2) inverse_variance_method();
-  if(methods == 3) combine_z_score();
+  if(pa.methods == 1 | pa.methods == 2) inverse_variance_method();
+  if(pa.methods == 3) combine_z_score();
 
 }
 
@@ -738,7 +591,7 @@ void META::inverse_variance_method()
 		heterogeneity(meta_snp, beta_hat);
 
 		/* random effect model, variance between group (nu) is taken into account */
-		if(methods == 2) combine_beta_se_with_nu(*it_union, beta_hat, se_hat);
+		if(pa.methods == 2) combine_beta_se_with_nu(*it_union, beta_hat, se_hat);
 
 		meta_snp.beta = beta_hat;
 		meta_snp.se = se_hat;
@@ -801,7 +654,7 @@ void META::combine_beta_se(const Positive pos, double& beta_hat, double& se_hat)
 			if(first == 0) {
 
 				/* rsid, alleles and allele frequenecies */
-				if(chr_included) meta_snp.chr = (*it_location).second.chr;
+				if(pa.chr_included) meta_snp.chr = (*it_location).second.chr;
 				meta_snp.rsid = (*it_location).second.rsid;
 				meta_snp.allele_A = (*it_location).second.allele_A;
 				meta_snp.allele_B = (*it_location).second.allele_B;
@@ -825,12 +678,12 @@ void META::combine_beta_se(const Positive pos, double& beta_hat, double& se_hat)
 
 			total_count += (*it_location).second.genotype_aa + (*it_location).second.genotype_ab + (*it_location).second.genotype_bb;
 
-			if(gc)
+			if(pa.gc)
 			{
 
-				beta_sum += beta_i[i] / (((*it_location).second.se * (*it_location).second.se) * genomic_controls[i]);
-				wei_i[i] = 1.0 / ((*it_location).second.se * (*it_location).second.se * genomic_controls[i]);
-				wei_sum += 1.0 / ((*it_location).second.se * (*it_location).second.se * genomic_controls[i]);
+				beta_sum += beta_i[i] / (((*it_location).second.se * (*it_location).second.se) * pa.genomic_controls[i]);
+				wei_i[i] = 1.0 / ((*it_location).second.se * (*it_location).second.se * pa.genomic_controls[i]);
+				wei_sum += 1.0 / ((*it_location).second.se * (*it_location).second.se * pa.genomic_controls[i]);
 
 			}else{
 
@@ -882,10 +735,10 @@ void META::combine_beta_se_with_nu(const Positive pos, double& beta_hat, double&
 			if((*it_location).second.snp_reversed) beta_i[i] = -(*it_location).second.beta;
 			else beta_i[i] = (*it_location).second.beta;
 
-			if(gc) {
+			if(pa.gc) {
 
-				beta_sum += beta_i[i] / ((*it_location).second.se * (*it_location).second.se * genomic_controls[i] + meta_snp.nu);
-				wei_sum += 1.0 / ((*it_location).second.se * (*it_location).second.se * genomic_controls[i] + meta_snp.nu);
+				beta_sum += beta_i[i] / ((*it_location).second.se * (*it_location).second.se * pa.genomic_controls[i] + meta_snp.nu);
+				wei_sum += 1.0 / ((*it_location).second.se * (*it_location).second.se * pa.genomic_controls[i] + meta_snp.nu);
 
 			}else{
 
@@ -939,14 +792,14 @@ void META::combine_z_score()
 
     		se_i[i] = (*it_location).second.se;
 
-    		if(gc) stat_i[i] = beta_i[i] / (se_i[i] * sqrt(genomic_controls[i]));
+    		if(pa.gc) stat_i[i] = beta_i[i] / (se_i[i] * sqrt(pa.genomic_controls[i]));
     		else stat_i[i] = beta_i[i] / se_i[i];
 
     		coded_count += (*it_location).second.genotype_aa + (*it_location).second.genotype_ab / 2.0;
 
     		total_count += (*it_location).second.genotype_aa + (*it_location).second.genotype_ab + (*it_location).second.genotype_bb;
 
-    		wei_i[i] = sample_sizes[i];
+    		wei_i[i] = pa.sample_sizes[i];
     		wei_sum += wei_i[i];
 
     		#ifdef DEBUG

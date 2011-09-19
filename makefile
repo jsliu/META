@@ -1,4 +1,4 @@
-CFLAGS = -O3 -static  
+CFLAGS = -O3 -static
 CXXFLAGS = -I. -O3 -Wno-deprecated -static
 
 CXX = /usr/bin/g++
@@ -8,15 +8,13 @@ PROB_LIBS = -L./tools/cprob/ -I./tools/cprob/
 CPROB := $(patsubst %.c,%.o,$(wildcard tools/cprob/*.c))
 
 #source files
-SOURCE = main.o meta_analysis.o
+SOURCE = main.o meta_analysis.o parameter.o
 
 all: meta
 meta: $(SOURCE) libcprob
 	$(CXX) $(CXXFLAGS) $(SOURCE) -o meta-stat-1.3 -lz -lm -lcprob $(PROB_LIBS) -static
 
-$(SOURCE): meta_analysis.h libcprob
-$(BOOST_IO): %.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c -o $@ $< 
+$(SOURCE): meta_analysis.h parameter.h libcprob
 libcprob: $(CPROB)
 	$(AR) rc tools/cprob/libcprob.a $(CPROB)
 

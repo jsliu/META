@@ -7,7 +7,7 @@ int main(int argc, char* argv[])
 
   if(parameter_number == 1) {
 
-      cout << "META v1.3.1 - Meta Analysis\n";
+      cout << "META v1.3.3 - Meta Analysis\n";
       cout <<  "(c) 2009-2011 Jason Liu, University of Oxford\n\n";
     
       cout << "Options:\n";
@@ -25,22 +25,13 @@ int main(int argc, char* argv[])
       cout << "        [--top-snp] NUMBER          Number of most significant SNPs in the output file\n\n";
       cout << "Contact : jsliu@stats.ox.ac.uk\n\n";   
 
-  }else {
- 
+  }else{
     try {
-     
-      vector<string> parameter;
-      parameter.reserve(parameter_number);
-
-      for(int i = 0; i < parameter_number; i++) parameter.push_back(argv[i]);
-
-      META ma(parameter_number, parameter);
+      Parameter p(argc, argv);    
+      META ma(p);
       ma.meta_run();
-
     }catch(exception& e){
-	
       cerr << "Exiting: " << e.what() << endl;
-
     }
 
   }
